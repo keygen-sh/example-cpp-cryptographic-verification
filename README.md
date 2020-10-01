@@ -1,6 +1,7 @@
 # Example C++ Cryptographic Verification
-This is an example of cryptographically verifying a license key's authenticity
-using your Keygen account's public key. You can find your public key within
+This is an example of cryptographically verifying a license key's authenticity,
+and extract embedded data within the key for offline use, using your Keygen
+account's public key. You can find your public key within
 [your account's settings page](https://app.keygen.sh/settings).
 
 This example implements the [`RSA_2048_PKCS1_SIGN` scheme](https://keygen.sh/docs/api/#policies-create-attrs-scheme).
