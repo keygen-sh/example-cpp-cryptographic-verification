@@ -57,6 +57,17 @@ string replace_str(string str, const string& from, const string& to) {
   return str;
 }
 
+unsigned char* base64_url_decode(string enc, int* len)
+{
+  // Convert base64url encoding to base64 (see https://keygen.sh/docs/api/#license-signatures)
+  enc = replace_str(enc, "-", "+");
+  enc = replace_str(enc, "_", "/");
+
+  unsigned char* buf = base64_decode(enc.c_str(), enc.size(), len);
+
+  return buf;
+}
+
 // Load an RSA public key from a PEM string
 RSA* load_rsa_pem_pub_key_from_string(const string pem_pub_key)
 {
@@ -84,45 +95,80 @@ RSA* load_rsa_pem_pub_key_from_string(const string pem_pub_key)
 // Verify a license key's authenticity by verifying its cryptographic signature
 bool verify_license_key_authenticity(RSA* rsa, const string license_key)
 {
-  // Key should have the format: {BASE64URL_KEY}.{BASE64URL_SIGNATURE}
-  vector<string> vec = split_str(license_key, ".");
-  if (vec.size() != 2)
-  {
-    cerr << ansii_color_str("[ERROR]", 31) << " "
-         << "License key is incorrectly formatted or invalid: "
-         << license_key
-         << endl;
+  const string LICENSE_KEY_DELIMITER = ".";
+  const string SIGNING_PREFIX_DELIMITER = "/";
+  const string SIGNING_PREFIX = "key";
 
-    exit(1);
+  string signing_data;
+  string encoded_sig;
+  string encoded_key;
+
+  // Key should have the format: key/{BASE64URL_KEY}.{BASE64URL_SIGNATURE}
+  {
+    vector<string> vec = split_str(license_key, LICENSE_KEY_DELIMITER);
+    if (vec.size() != 2)
+    {
+      cerr << ansii_color_str("[ERROR]", 31) << " "
+          << "License key is incorrectly formatted or invalid: "
+          << license_key
+          << endl;
+
+      exit(1);
+    }
+
+    signing_data = vec[0];
+    encoded_sig = vec[1];
   }
 
-  // Convert base64url encoding to base64 (see https://keygen.sh/docs/api/#license-signatures)
-  for (int i = 0; i < vec.size(); i++)
+  // Split encoded key from prefix
   {
-    string s = vec[i];
+    vector<string> vec = split_str(signing_data, SIGNING_PREFIX_DELIMITER);
+    if (vec.size() != 2)
+    {
+      cerr << ansii_color_str("[ERROR]", 31) << " "
+          << "License key is incorrectly formatted or invalid: "
+          << license_key
+          << endl;
 
-    s = replace_str(s, "-", "+");
-    s = replace_str(s, "_", "/");
+      exit(1);
+    }
 
-    vec[i] = s;
+    if (vec[0] != SIGNING_PREFIX)
+    {
+      cerr << ansii_color_str("[ERROR]", 31) << " "
+          << "License key prefix is invalid: "
+          << vec[0].c_str()
+          << endl;
+
+      exit(1);
+    }
+
+    encoded_key = vec[1];
   }
 
   // Base64 decode license key
   int key_len;
-  unsigned char* key_buf = base64_decode(vec[0].c_str(), vec[0].size(), &key_len);
+  unsigned char* key_buf = base64_url_decode(encoded_key, &key_len);
 
   // Base64 decode signature
   int sig_len;
-  unsigned char* sig_buf = base64_decode(vec[1].c_str(), vec[1].size(), &sig_len);
+  unsigned char* sig_buf = base64_url_decode(encoded_sig, &sig_len);
 
-  // Hash license key using SHA256
-  unsigned char key_digest[SHA256_DIGEST_LENGTH];
-  SHA256(key_buf, key_len, key_digest);
+  // Add signing prefix to license key for signature verification
+  string recreated_signing_data = SIGNING_PREFIX + SIGNING_PREFIX_DELIMITER + encoded_key;
+  int signing_data_len = recreated_signing_data.size();
+  unsigned char* signing_data_buf = reinterpret_cast<unsigned char *>(
+    const_cast<char *>(recreated_signing_data.c_str())
+  );
+
+  // Hash prefixed license key using SHA256
+  unsigned char signing_data_digest[SHA256_DIGEST_LENGTH];
+  SHA256(signing_data_buf, signing_data_len, signing_data_digest);
 
   // Verify the key's signature
   int res = RSA_verify(
     NID_sha256,
-    key_digest,
+    signing_data_digest,
     SHA256_DIGEST_LENGTH,
     sig_buf,
     sig_len,
@@ -133,6 +179,14 @@ bool verify_license_key_authenticity(RSA* rsa, const string license_key)
 
   free(key_buf);
   free(sig_buf);
+
+  if (res)
+  {
+    cerr << ansii_color_str("[INFO]", 34) << " "
+          << "License key contents: "
+          << key_buf
+          << endl;
+  }
 
   return (bool) res;
 }

@@ -4,7 +4,7 @@ and extracting embedded tamper-proof data within the key for offline use, all by
 using your Keygen account's public key. You can find your public key within
 [your account's settings page](https://app.keygen.sh/settings).
 
-This example implements the [`RSA_2048_PKCS1_SIGN` scheme](https://keygen.sh/docs/api/#policies-create-attrs-scheme).
+This example implements the [`RSA_2048_PKCS1_SIGN_V2` scheme](https://keygen.sh/docs/api/#policies-create-attrs-scheme).
 Cryptographically verifying schemed licenses can be used to implement
 offline licensing, as well as to add additional security measures to
 your licensing model. All that is needed to cryptographically verify
