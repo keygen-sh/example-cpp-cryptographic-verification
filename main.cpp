@@ -190,11 +190,6 @@ bool verify_license_key_authenticity(RSA* rsa, const std::string license_key)
     rsa
   );
 
-  RSA_free(rsa);
-
-  free(key_buf);
-  free(sig_buf);
-
   if (res)
   {
     std::cerr << ansii_color_str("[INFO]", 34) << " "
@@ -202,6 +197,10 @@ bool verify_license_key_authenticity(RSA* rsa, const std::string license_key)
               << key_buf
               << std::endl;
   }
+
+  RSA_free(rsa);
+  free(key_buf);
+  free(sig_buf);
 
   return (bool) res;
 }
