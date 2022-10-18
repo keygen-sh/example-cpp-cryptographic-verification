@@ -69,7 +69,7 @@ const static unsigned char unb64[]={
 // Converts binary data of length=len to base64 characters.
 // Length of the resultant string is stored in flen
 // (you must pass pointer flen).
-char* base64_encode( const void* binaryData, int len, int *flen )
+char* base64( const void* binaryData, int len, int *flen )
 {
   const unsigned char* bin = (const unsigned char*) binaryData ;
   char* res ;
@@ -119,7 +119,7 @@ char* base64_encode( const void* binaryData, int len, int *flen )
   return res ;
 }
 
-unsigned char* base64_decode( const char* ascii, int len, int *flen )
+unsigned char* unbase64( const char* ascii, int len, int *flen )
 {
   const unsigned char *safeAsciiPtr = (const unsigned char*)ascii ;
   unsigned char *bin ;
@@ -127,7 +127,7 @@ unsigned char* base64_decode( const char* ascii, int len, int *flen )
   int charNo;
   int pad = 0 ;
 
-  if( len < 2 ) { // 2 accesses below would be OOB.
+  if ((len <= 0) || (len % 4 != 0)) { // 2 accesses below would be OOB.
     // catch empty string, return NULL as result.
     puts( "ERROR: You passed an invalid base64 string (too short). You get NULL back." ) ;
     *flen=0;
